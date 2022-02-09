@@ -1,6 +1,7 @@
 import discord
 from bs4 import BeautifulSoup as BS
 import requests
+from discord.ext import commands
 
 def get_price(coin_name):
     url = f"https://coinmarketcap.com/currencies/{coin_name}/"
@@ -17,39 +18,47 @@ def get_price_historical(date):
     return price    
 
 TOKEN = ""
-client = discord.Client()
+client = commands.Bot("!")
 
 @client.event
 async def on_ready():  
     print(f"{client.user} botu Discorda bağlandı!\n")
+    price = get_price("bitcoin")
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name= "Bitcoin "+price))
 
 @client.event
 async def on_member_join(member):
     await member.create_dm()
     await member.dm_channel.send(f"Merhaba {member.name}, sunucuma hoşgeldin.")
 
-@client.event
-async def on_message(message):
-    if client.user  == message.author:
-        return
-
-    if message.content[0:6] == "!price":      
-        try:
-            response = get_price(message.content[7:])
-        except AttributeError:
-            response = "Hatalı coin adı girdiniz."
-        await message.channel.send(response)
+@client.command(name="price")
+async def on_message(ctx,arg):
+    if client.user  == ctx.message.author:
+        return    
+    try:
+        response = get_price(arg)
+    except AttributeError:
+        response = "Wrong coin name."
+    await ctx.message.channel.send(response)
     
-    if message.content[0:7] == "!hprice":      
-        try:
-            response = get_price_historical(message.content[8:])
-        except AttributeError:
-            response = "Hatalı tarih girdiniz."
-        await message.channel.send(response)
+@client.command(name = "historical")
+async def on_message(ctx,arg):
+    if client.user  == ctx.message.author:
+        return    
+    try:
+        response = get_price_historical(arg)
+    except AttributeError:
+        response = "Wrong date."
+    await ctx.message.channel.send(response)
 
-@client.event
+@client.command(name="status")
+async def change_status(ctx,arg):
+    price = get_price(arg)
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=arg+' '+price))
+    await ctx.message.channel.send("Status changed.")
+
+@client.command(name="clear")
 async def clear(ctx, number=50):
-    if ctx.message.content[0:6] == "!clear":
-        await ctx.channel.purge(limit=number)    
+    await ctx.channel.purge(limit=number)    
 
-client.run(TOKEN)        
+client.run(TOKEN)     
